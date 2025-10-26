@@ -2,6 +2,8 @@
 
 **AzerothCore module** – Adds a once-per-server drop of **Talisman of Binding Shard (17782)** to a configurable NPC’s corpse loot.
 
+https://wowpedia.fandom.com/wiki/Talisman_of_Binding_Shard
+
 ## Features
 - Defaults to Baron Geddon (12056)
 - Configurable via modules config
