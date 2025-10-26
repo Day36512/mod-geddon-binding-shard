@@ -2,8 +2,8 @@
  * Copyright (C) 2016+ AzerothCore <www.azerothcore.org>
  * Released under GNU AGPL v3: https://github.com/azerothcore/azerothcore-wotlk/blob/master/LICENSE-AGPL3
  *
- * Adds a (configurable) once-per-server drop of Talisman of Binding Shard (17782) to an NPC's CORPSE loot.
- * Defaults to Baron Geddon (entry 12056), but can be changed via worldserver.conf:
+ * Adds a configurable once-per-server drop of Talisman of Binding Shard (17782) to an NPC's CORPSE loot.
+ * Defaults to Baron Geddon (entry 12056), but can be changed via configs:
  *
  *   GeddonShard.Enable         = 1         # bool
  *   GeddonShard.NpcEntry       = 12056     # uint32 creature_template.entry
@@ -18,11 +18,16 @@
 #include "Player.h"
 #include "World.h"
 #include "ObjectMgr.h"
+#include "ObjectAccessor.h"
 #include "DatabaseEnv.h"
 #include "Log.h"
 #include "LootMgr.h"
 #include "Chat.h"
 #include "WorldSessionMgr.h"
+
+#include <atomic>
+#include <mutex>
+#include <ctime>
 
 namespace
 {
@@ -103,7 +108,7 @@ namespace
         LOG_INFO("module", "[GeddonShard] ResetOnStartup=1 -> cleared once-per-server memory.");
     }
 
-    void PersistDropped(Player* killer)
+    void PersistDropped_KillPhase(Player* killer)
     {
         if (gConf.allowRepeat)
             return;
@@ -135,6 +140,28 @@ namespace
         }
 
         gAlreadyDropped.store(true, std::memory_order_relaxed);
+    }
+
+    void PersistDropped_LootPhase(Player* looter)
+    {
+        if (gConf.allowRepeat)
+            return;
+
+        uint64 now = static_cast<uint64>(std::time(nullptr));
+        std::string name = looter ? looter->GetName() : std::string();
+        if (name.empty())
+            return;
+
+        if (name.size() > 63) name.resize(63);
+        for (char& ch : name) if (ch == '\'' || ch == '\"') ch = '_';
+
+        std::lock_guard<std::mutex> _g(gDbMutex);
+        WorldDatabase.DirectExecute(
+            Acore::StringFormat(
+                "UPDATE `{}` SET `last_drop_time`={}, `last_killer`='{}' WHERE `keyname`='{}'",
+                TABLE_NAME, now, name, KEY_NAME
+            ).c_str()
+        );
     }
 
     bool RollDrop()
@@ -173,26 +200,34 @@ namespace
         return false;
     }
 
-
-    void AnnounceDrop(Player* killer, Creature const* killed)
+    std::string GetLootSourceName(Player* player, ObjectGuid lootGuid)
     {
-        std::string who = killer ? killer->GetName() : std::string("Someone");
+        if (!player)
+            return "their foe";
 
-        std::string bossName;
-        if (killed)
+        if (lootGuid.IsCreature())
         {
-            bossName = killed->GetName();
+            if (Creature* cr = ObjectAccessor::GetCreature(*player, lootGuid))
+                return cr->GetName();
         }
-        else if (CreatureTemplate const* ct = sObjectMgr->GetCreatureTemplate(gConf.npcEntry))
+        else if (lootGuid.IsGameObject())
         {
-            bossName = ct->Name;
-        }
-        else
-        {
-            bossName = "their foe";
+            if (GameObject* go = ObjectAccessor::GetGameObject(*player, lootGuid))
+                return go->GetName();
         }
 
-        std::string msg = Acore::StringFormat("{} has defeated {} and claimed the legendary Talisman of Binding Shard!", who, bossName);
+        if (CreatureTemplate const* ct = sObjectMgr->GetCreatureTemplate(gConf.npcEntry))
+            return ct->Name;
+
+        return "their foe";
+    }
+
+    void AnnounceDrop_PlayerLoot(Player* looter, ObjectGuid lootGuid)
+    {
+        std::string who = looter ? looter->GetName() : std::string("Someone");
+        std::string bossName = GetLootSourceName(looter, lootGuid);
+
+        std::string msg = Acore::StringFormat("{} has looted the legendary Talisman of Binding Shard from {}!", who, bossName);
 
         WorldPacket data;
         ChatHandler::BuildChatPacket(
@@ -247,6 +282,7 @@ class GeddonShard_Player : public PlayerScript
 public:
     GeddonShard_Player() : PlayerScript("GeddonShard_Player") {}
 
+    // Phase 1: On kill, inject the item into the corpse loot if it passes the roll.
     void OnPlayerCreatureKill(Player* killer, Creature* killed) override
     {
         if (!gConf.enable || !killer || !killed)
@@ -265,11 +301,24 @@ public:
             return;
 
         AddOneToLoot(&killed->loot, ITEM_TALISMAN);
-        PersistDropped(killer);
-        AnnounceDrop(killer, killed);
+
+        PersistDropped_KillPhase(killer);
 
         LOG_INFO("module", "[GeddonShard] Added item {} to {}'s corpse loot{}.",
             ITEM_TALISMAN, killed->GetName().c_str(), gConf.allowRepeat ? " (AllowRepeat=1)" : "");
+    }
+
+    void OnPlayerLootItem(Player* looter, Item* item, uint32 /*count*/, ObjectGuid lootGuid) override
+    {
+        if (!gConf.enable || !looter || !item)
+            return;
+
+        if (item->GetEntry() != ITEM_TALISMAN)
+            return;
+
+        AnnounceDrop_PlayerLoot(looter, lootGuid);
+
+        PersistDropped_LootPhase(looter);
     }
 };
 
