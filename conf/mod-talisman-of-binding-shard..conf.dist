@@ -1,0 +1,44 @@
+#
+# Copyright (C) 2016+ AzerothCore <www.azerothcore.org>, released under GNU AGPL v3 license: https://github.com/azerothcore/azerothcore-wotlk/blob/master/LICENSE-AGPL3
+#
+
+[worldserver]
+
+###################################################################################################
+# GeddonShard – Once-per-server Talisman of Binding Shard drop
+#
+# Adds a (configurable) once-per-server drop of Talisman of Binding Shard (17782) to a boss’s
+# CORPSE loot when killed by a player. By default this targets Baron Geddon (12056).
+#
+# Notes:
+# - Changes to most options take effect on .reload config (or restart). The once-per-server flag
+#   only resets at startup if ResetOnStartup = 1.
+# - If you change NpcEntry away from Baron Geddon, the current announce text in code still says
+#   “Baron Geddon”. You’ll likely want to generalize that string or make it configurable too.
+###################################################################################################
+
+# Master switch for the feature.
+# 1 = enabled (default), 0 = disabled
+GeddonShard.Enable = 1
+
+# Creature entry that can drop the shard. Default is Baron Geddon (Molten Core).
+# Set to any valid creature_template.entry to repoint the drop.
+# Example: Ragnaros = 11502
+GeddonShard.NpcEntry = 12056
+
+# Percent chance to add the shard to the corpse loot on an eligible kill.
+# This runs only if the shard hasn’t dropped server-wide (unless AllowRepeat = 1).
+# Examples: 1.0 = 1%, 0.5 = 0.5%, 100.0 = always
+GeddonShard.Chance = 1.0
+
+# Allow repeats (ignore the once-per-server rule).
+# 0 = off (default), 1 = on
+# When on, every eligible kill rolls the chance and can drop multiple times across the server.
+GeddonShard.AllowRepeat = 0
+
+# Reset the once-per-server memory table at startup.
+# 0 = off (default), 1 = on
+# WARNING: setting this to 1 means the shard can drop again after every restart (unless AllowRepeat = 0
+# and you set it back to 0 after one drop).
+GeddonShard.ResetOnStartup = 0
+
