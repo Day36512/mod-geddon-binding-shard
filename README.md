@@ -6,7 +6,7 @@
 - Defaults to Baron Geddon (12056)
 - Configurable via modules config
 - Once-per-server drop memory table (`mod_geddon_once_drop`)
-- Global announcement with killer and boss name
+- Global announcement with looter and boss name
 - Optional reset and repeat behavior for testing or custom servers
 
 ## Configuration
