@@ -14,7 +14,7 @@
 # - Changes to most options take effect on .reload config (or restart). The once-per-server flag
 #   only resets at startup if ResetOnStartup = 1.
 # - If you change NpcEntry away from Baron Geddon, the current announce text in code still says
-#   “Baron Geddon”. You’ll likely want to generalize that string or make it configurable too.
+#   “Baron Geddon”. 
 ###################################################################################################
 
 # Master switch for the feature.
