@@ -6,7 +6,7 @@
 
 void AddSC_GeddonBindingShardScripts();
 
-void Addmod_talisman_of_binding_shardScripts()
+void Addmod_geddon_binding_shardScripts()
 {
     AddSC_GeddonBindingShardScripts();
 }
