@@ -1,10 +1,3 @@
-GitHub description:
-
-A configurable AzerothCore boss-loot module that can add custom item drops to one or more bosses, including repeatable drops, once-per-server drops, custom chances, stack counts, and optional global announcements.
-
-
-README:
-
 # mod-geddon-binding-shard
 
 AzerothCore module for adding configurable custom item drops to boss corpse loot.
