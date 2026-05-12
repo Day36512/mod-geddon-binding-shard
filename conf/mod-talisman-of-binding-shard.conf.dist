@@ -1,44 +1,260 @@
+###################################################################################################
 #
-# Copyright (C) 2016+ AzerothCore <www.azerothcore.org>, released under GNU AGPL v3 license: https://github.com/azerothcore/azerothcore-wotlk/blob/master/LICENSE-AGPL3
+# mod_talisman_of_binding_shard.conf.dist
+# Configurable Boss Loot / Once-Per-Server Loot Module
 #
-
-[worldserver]
+# This expanded module lets you add configurable item drops to boss corpse loot without editing SQL
+# loot templates. It can be used for the original Talisman of Binding Shard behavior, but it is no
+# longer limited to Baron Geddon or to one item.
+#
+# You can configure:
+#   - multiple bosses
+#   - multiple items on the same boss
+#   - different drop chances per item
+#   - repeatable drops
+#   - once-per-server drops
+#   - custom stack counts
+#   - global loot announcements
+#
+# HOW THIS CONFIG WORKS
+#
+# Every possible drop is one numbered rule:
+#
+#   BossLoot.Rule.1.*
+#   BossLoot.Rule.2.*
+#   BossLoot.Rule.3.*
+#
+# BossLoot.RuleCount tells the module how many numbered rules to read.
+#
+# Example:
+#
+#   BossLoot.RuleCount = 3
+#
+# means the module reads:
+#
+#   BossLoot.Rule.1.*
+#   BossLoot.Rule.2.*
+#   BossLoot.Rule.3.*
+#
+# If you add BossLoot.Rule.4.*, you MUST change BossLoot.RuleCount to 4.
+# If you set BossLoot.RuleCount too low, your later rules will be ignored.
+#
+# IMPORTANT ONCE-PER-SERVER NOTE
+#
+# Once-per-server drops are tracked by OnceKey, not by the rule number.
+# This means you can reorder your config later without accidentally resetting a legendary drop,
+# as long as you keep the same OnceKey.
+#
+# Good OnceKey examples:
+#
+#   geddon_17782_once
+#   ragnaros_900001_once
+#   onyxia_19019_once
+#   illidan_901234_once
+#
+# Bad OnceKey examples:
+#
+#   legendary
+#   bossdrop
+#   rule1
+#
+# Do not reuse the same OnceKey for different drops unless you deliberately want them to share the
+# same once-per-server lockout. Reusing keys accidentally is how loot configs become goblin poetry.
+#
+###################################################################################################
 
 ###################################################################################################
-# GeddonShard – Once-per-server Talisman of Binding Shard drop
-#
-# Adds a (configurable) once-per-server drop of Talisman of Binding Shard (17782) to a boss’s
-# CORPSE loot when killed by a player. By default this targets Baron Geddon (12056).
-#
-# Notes:
-# - Changes to most options take effect on .reload config (or restart). The once-per-server flag
-#   only resets at startup if ResetOnStartup = 1.
-# - If you change NpcEntry away from Baron Geddon, the current announce text in code still says
-#   “Baron Geddon”. 
+# MASTER SETTINGS
 ###################################################################################################
 
-# Master switch for the feature.
-# 1 = enabled (default), 0 = disabled
-GeddonShard.Enable = 1
+BossLoot.Enable = 1
 
-# Creature entry that can drop the shard. Default is Baron Geddon (Molten Core).
-# Set to any valid creature_template.entry to repoint the drop.
-# Example: Ragnaros = 11502
-GeddonShard.NpcEntry = 12056
+# This sample config has 5 rules below. Only Rule 1 is enabled by default.
+BossLoot.RuleCount = 5
 
-# Percent chance to add the shard to the corpse loot on an eligible kill.
-# This runs only if the shard hasn’t dropped server-wide (unless AllowRepeat = 1).
-# Examples: 1.0 = 1%, 0.5 = 0.5%, 100.0 = always
-GeddonShard.Chance = 1.0
+# Be careful. 1 means once-per-server drops reset every worldserver startup.
+BossLoot.ResetOnStartup = 0
 
-# Allow repeats (ignore the once-per-server rule).
-# 0 = off (default), 1 = on
-# When on, every eligible kill rolls the chance and can drop multiple times across the server.
-GeddonShard.AllowRepeat = 0
+###################################################################################################
+# RULE 1
+# Original behavior: Baron Geddon can drop Talisman of Binding Shard once per server.
+###################################################################################################
 
-# Reset the once-per-server memory table at startup.
-# 0 = off (default), 1 = on
-# WARNING: setting this to 1 means the shard can drop again after every restart (unless AllowRepeat = 0
-# and you set it back to 0 after one drop).
+BossLoot.Rule.1.Enable = 1
+BossLoot.Rule.1.NpcEntry = 12056
+BossLoot.Rule.1.ItemEntry = 17782
+BossLoot.Rule.1.Chance = 1.0
+BossLoot.Rule.1.MinCount = 1
+BossLoot.Rule.1.MaxCount = 1
+BossLoot.Rule.1.AllowRepeat = 0
+BossLoot.Rule.1.PreventDuplicate = 1
+BossLoot.Rule.1.OnceKey = geddon_17782_once
+BossLoot.Rule.1.ResetOnStartup = 0
+BossLoot.Rule.1.Announce = 1
+BossLoot.Rule.1.AnnounceMessage = {player} has looted the legendary {item} from {boss}!
+
+###################################################################################################
+# RULE 2
+# Example: Onyxia repeatable rare drop.
+###################################################################################################
+
+BossLoot.Rule.2.Enable = 0
+BossLoot.Rule.2.NpcEntry = 10184
+BossLoot.Rule.2.ItemEntry = 19019
+BossLoot.Rule.2.Chance = 0.25
+BossLoot.Rule.2.MinCount = 1
+BossLoot.Rule.2.MaxCount = 1
+BossLoot.Rule.2.AllowRepeat = 1
+BossLoot.Rule.2.PreventDuplicate = 1
+BossLoot.Rule.2.OnceKey = 
+BossLoot.Rule.2.ResetOnStartup = 0
+BossLoot.Rule.2.Announce = 1
+BossLoot.Rule.2.AnnounceMessage = {player} pulled {item} from {boss}. The loot goblin choir is inconsolable.
+
+###################################################################################################
+# RULE 3
+# Example: Ragnaros once-per-server custom drop.
+###################################################################################################
+
+BossLoot.Rule.3.Enable = 0
+BossLoot.Rule.3.NpcEntry = 11502
+BossLoot.Rule.3.ItemEntry = 900001
+BossLoot.Rule.3.Chance = 5.0
+BossLoot.Rule.3.MinCount = 1
+BossLoot.Rule.3.MaxCount = 1
+BossLoot.Rule.3.AllowRepeat = 0
+BossLoot.Rule.3.PreventDuplicate = 1
+BossLoot.Rule.3.OnceKey = ragnaros_900001_once
+BossLoot.Rule.3.ResetOnStartup = 0
+BossLoot.Rule.3.Announce = 1
+BossLoot.Rule.3.AnnounceMessage = {player} has looted {item} from {boss}!
+
+###################################################################################################
+# RULE 4
+# Example: Same boss as Rule 3, different item.
+###################################################################################################
+
+BossLoot.Rule.4.Enable = 0
+BossLoot.Rule.4.NpcEntry = 11502
+BossLoot.Rule.4.ItemEntry = 900002
+BossLoot.Rule.4.Chance = 10.0
+BossLoot.Rule.4.MinCount = 1
+BossLoot.Rule.4.MaxCount = 1
+BossLoot.Rule.4.AllowRepeat = 1
+BossLoot.Rule.4.PreventDuplicate = 1
+BossLoot.Rule.4.OnceKey = 
+BossLoot.Rule.4.ResetOnStartup = 0
+BossLoot.Rule.4.Announce = 0
+BossLoot.Rule.4.AnnounceMessage = {player} has looted {item} from {boss}!
+
+###################################################################################################
+# RULE 5
+# Example: Guaranteed token-style drop with a random count.
+###################################################################################################
+
+BossLoot.Rule.5.Enable = 0
+BossLoot.Rule.5.NpcEntry = 18867
+BossLoot.Rule.5.ItemEntry = 23572
+BossLoot.Rule.5.Chance = 100.0
+BossLoot.Rule.5.MinCount = 1
+BossLoot.Rule.5.MaxCount = 3
+BossLoot.Rule.5.AllowRepeat = 1
+BossLoot.Rule.5.PreventDuplicate = 1
+BossLoot.Rule.5.OnceKey = 
+BossLoot.Rule.5.ResetOnStartup = 0
+BossLoot.Rule.5.Announce = 0
+BossLoot.Rule.5.AnnounceMessage = {player} has looted {count}x {item} from {boss}!
+
+###################################################################################################
+# ADDING MORE RULES
+###################################################################################################
+
+# To add another boss/item drop:
+#
+# 1. Increase BossLoot.RuleCount.
+#
+#    Example:
+#      BossLoot.RuleCount = 6
+#
+# 2. Copy one of the rule blocks above.
+#
+# 3. Rename every BossLoot.Rule.5.* line to BossLoot.Rule.6.*.
+#
+# 4. Set the boss entry and item entry:
+#
+#      BossLoot.Rule.6.NpcEntry = boss_creature_template_entry_here
+#      BossLoot.Rule.6.ItemEntry = item_template_entry_here
+#
+# 5. Decide whether it repeats:
+#
+#      AllowRepeat = 1     repeatable drop
+#      AllowRepeat = 0     once-per-server drop
+#
+# 6. If AllowRepeat = 0, give it a unique OnceKey:
+#
+#      BossLoot.Rule.6.OnceKey = boss_item_once
+#
+# Full copy/paste blank rule:
+#
+# BossLoot.Rule.6.Enable = 1
+# BossLoot.Rule.6.NpcEntry = 0
+# BossLoot.Rule.6.ItemEntry = 0
+# BossLoot.Rule.6.Chance = 1.0
+# BossLoot.Rule.6.MinCount = 1
+# BossLoot.Rule.6.MaxCount = 1
+# BossLoot.Rule.6.AllowRepeat = 1
+# BossLoot.Rule.6.PreventDuplicate = 1
+# BossLoot.Rule.6.OnceKey = 
+# BossLoot.Rule.6.ResetOnStartup = 0
+# BossLoot.Rule.6.Announce = 0
+# BossLoot.Rule.6.AnnounceMessage = {player} has looted {item} from {boss}!
+
+###################################################################################################
+# COMMON PATTERNS
+###################################################################################################
+
+# Repeatable 5% custom drop:
+#
+# BossLoot.Rule.N.Chance = 5.0
+# BossLoot.Rule.N.AllowRepeat = 1
+# BossLoot.Rule.N.OnceKey = 
+
+# Once-per-server 1% legendary drop:
+#
+# BossLoot.Rule.N.Chance = 1.0
+# BossLoot.Rule.N.AllowRepeat = 0
+# BossLoot.Rule.N.OnceKey = boss_item_once
+# BossLoot.Rule.N.Announce = 1
+
+# Guaranteed token drop, 1-3 count:
+#
+# BossLoot.Rule.N.Chance = 100.0
+# BossLoot.Rule.N.MinCount = 1
+# BossLoot.Rule.N.MaxCount = 3
+# BossLoot.Rule.N.AllowRepeat = 1
+
+# Silent drop with no global announcement:
+#
+# BossLoot.Rule.N.Announce = 0
+
+# Big dramatic global announcement:
+#
+# BossLoot.Rule.N.Announce = 1
+# BossLoot.Rule.N.AnnounceMessage = {player} has torn {item} from the smoking corpse of {boss}!
+
+###################################################################################################
+# LEGACY COMPATIBILITY MODE
+###################################################################################################
+
+# These old settings are used ONLY when:
+#
+#   BossLoot.RuleCount = 0
+#
+# They preserve the original single-item Talisman of Binding Shard behavior.
+# If BossLoot.RuleCount is 1 or higher, these GeddonShard.* settings are ignored.
+
+GeddonShard.Enable         = 1
+GeddonShard.NpcEntry       = 12056
+GeddonShard.Chance         = 1.0
+GeddonShard.AllowRepeat    = 0
 GeddonShard.ResetOnStartup = 0
-
